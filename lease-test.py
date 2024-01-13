@@ -33,11 +33,11 @@ def get_lease():
 
 def update_lease(lease=None):
     """Update the lease renew time. If the holder has changed, also set the acquire time and increment the lease transition count."""
-    now = datetime.now(UTC)
     lease = lease or get_lease()
+    now = datetime.now(UTC)
 
     # update renew time
-    lease.spec.renew_time = now + timedelta(seconds=LEASE_DURATION)
+    lease.spec.renew_time = now
     lease.spec.lease_duration_seconds = LEASE_DURATION
 
     # if the holder has changed, also set the acquire time and increment the lease transition count
@@ -57,27 +57,29 @@ def update_lease(lease=None):
     )
 
 
-def sleep_until(ts: datetime, delta: int = 0):
+def sleep_until(ts: datetime):
     """Sleep until the specified timestamp minus the delta in milliseconds."""
-    duration_ms = (ts - datetime.now(UTC))/timedelta(milliseconds=1) - delta
+    duration_ms = (ts - datetime.now(UTC))/timedelta(milliseconds=1)
     time.sleep(duration_ms / 1000)
 
 
 def acquire_lease():
     """Try to acquire the lease if it has expired or wait."""
     while True:
-        now = datetime.now(UTC)
         lease = get_lease()
+        now = datetime.now(UTC)
+        expiration = lease.spec.renew_time + timedelta(seconds=LEASE_DURATION) if lease.spec.renew_time else now
 
-        if lease.spec.renew_time and lease.spec.renew_time > now:
+        if expiration > now:
             # lease is still active - wait until it exires
             print(f'follwing leader {lease.spec.holder_identity}')
-            sleep_until(lease.spec.renew_time)
+            sleep_until(expiration)
         else:
             # lease has expired - try to become new leader
             try:
                 return update_lease(lease)
             except ApiException as e:
+                # update failed 409 Conflict errors are expected in this case
                 if e.status != 409 or e.reason != 'Conflict':
                     raise e
 
@@ -90,5 +92,6 @@ if __name__ == '__main__':
 
     while True:
         print(f"i'm leader {lease.spec.holder_identity}")
-        sleep_until(lease.spec.renew_time, RENEW_LEAD_TIME)
+        renew_due = lease.spec.renew_time + timedelta(seconds=LEASE_DURATION) - timedelta(milliseconds=RENEW_LEAD_TIME)
+        sleep_until(renew_due)
         lease = update_lease()
