@@ -1,15 +1,10 @@
-[tool.poetry]
+[project]
 name = "leases"
 version = "0.1.0"
-description = ""
-authors = ["Oliver Treichel <oliver.treichel@gmx.de>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.12"
-kubernetes = "^34.0.0"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+description = "Add your description here"
+ubreadme = "README.md"
+email = "oliver.treichel@gmx.de"
+requires-python = ">=3.14"
+dependencies = [
+    "kubernetes>=34.1.0",
+]
